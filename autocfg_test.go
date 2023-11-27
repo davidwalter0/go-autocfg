@@ -1,6 +1,7 @@
 package autocfg
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"path"
@@ -9,10 +10,10 @@ import (
 
 type fakeTestConf struct {
 	VaultAddr string `json:"vault-address"`
-	Role      string
-	Secret    string
-	Filename  string
-	Debug     bool
+	Role      string `json:"role"`
+	Secret    string `json:"secret"`
+	Filename  string `json:"filename,omitempty" doc:"filename for command line flag file name override"`
+	Debug     bool   `json:"debug,omitempty"`
 }
 
 type testCfg struct {
@@ -50,6 +51,32 @@ func TestAutoCfgVar(t *testing.T) {
 // func TestPrintEnv(t *testing.T) {
 // 	t.Logf("\n%s\n", autoCfgEnv())
 // }
+
+func TestGenerator(t *testing.T) {
+	Generator(&fakeTestConf{VaultAddr: "https://vault", Role: "abc123...", Secret: "def456..."})
+}
+
+func TestConfigure(t *testing.T) {
+	var err error
+	var text []byte
+	var o = &fakeTestConf{}
+	os.Setenv("AUTOCFG_FILENAME", "/tmp/dot.autocfg.json")
+	err = configure(o)
+	if err != nil {
+		t.Error(err)
+	}
+	text, err = json.MarshalIndent(o, "", "  ")
+	if err != nil {
+		t.Error(err)
+	}
+	t.Log(string(text))
+
+	os.Setenv("AUTOCFG_FILENAME", "/tmp/dot.autocfg.json")
+	err = configure(*o)
+	if err == nil {
+		t.Error("should fail with object is not a pointer to struct")
+	}
+}
 
 func newTestCfg(t *testing.T) *testCfg {
 	var dir, err = os.MkdirTemp("/tmp", "autocfg-test-*")

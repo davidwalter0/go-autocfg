@@ -1,9 +1,9 @@
-module pkg/autocfg
+module github.com/davidwalter0/go-autocfg
 
 go 1.21.0
 
 require (
-	github.com/davidwalter0/go-cfg v1.2.13
+	github.com/davidwalter0/go-cfg v1.4.0-rc.1
 	github.com/hashicorp/vault/api v1.10.0
 	github.com/mitchellh/go-homedir v1.1.0
 )
@@ -21,6 +21,7 @@ require (
 	github.com/hashicorp/go-secure-stdlib/strutil v0.1.2 // indirect
 	github.com/hashicorp/go-sockaddr v1.0.2 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
+	github.com/kr/text v0.2.0 // indirect
 	github.com/mattn/color v0.0.0-20151026152412-8640971291e5 // indirect
 	github.com/mattn/go-isatty v0.0.12 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect

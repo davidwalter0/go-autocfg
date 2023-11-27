@@ -1,0 +1,414 @@
+:PROPERTIES:
+:ID: f51b2480-869b-4a09-a79f-116caafe4a51
+:CREATED: [2023-11-20 Mon 15:45]
+:FILE: /home/david/go/src/playground/autocfg/cmd/${APP}/README.org
+:END:
+#+title: appcfg example
+#+backlink: [[/home/david/go/src/playground/autocfg/cmd/${APP}/README.org,[[id:df675a8f-5b57-496c-9073-c382960a8be8]]]]
+#+options: toc:nil
+
+* TOC      :noexport:
+:PROPERTIES:
+:CUSTOM_ID: toc
+:TOC:      :include all :depth 4 :force (depth) :ignore (this) :local (depth)
+:END:
+
+:CONTENTS:
+:END:
+* last working testing on DirectAndIndirect
+** Next steps merge / union dominant 
+* appcfg example
+:PROPERTIES:
+:ID:       9e566698-86cf-4ebe-8b39-e4fd7eee00fb
+:END:
+
+The order of application of configuration load is strictly 
+
+- file unmarshal ( load the configuration from file )
+- env - set from the program environment
+- flag - from the command line arguments
+
+#+begin_src go :tangle /tmp/new-main.go :results org :main no :package 'discard
+package main
+
+import (
+	"encoding/json"
+	"fmt"
+	"log"
+	"github.com/davidwalter0/go-autocfg"
+
+	"github.com/hashicorp/vault/api"
+)
+
+// App config options
+type App struct {
+	VaultAddr string `json:"vault-address"`
+	Role      string `json:"role"`
+	Secret    string `json:"secret"`
+	Filename  string `json:"filename,omitempty" doc:"filename for command line flag file name override"`
+	Debug     bool   `json:"debug,omitempty"`
+}
+
+var app = &App{}
+var text []byte
+
+var client *api.Client
+
+func main() {
+//	var text []byte
+	var err error
+	//	autocfg.Generator(app)
+	autocfg.Configure(app)
+	// var conf = api.DefaultConfig()
+	// client, err = api.NewClient(conf)
+	// client.SetAddress(app.VaultAddr)
+
+	// resp, err := client.Logical().Write("auth/approle/login", map[string]interface{}{
+	// 	"role_id":   app.Role,
+	// 	"secret_id": app.Secret,
+	// })
+	// if err != nil {
+	// 	log.Fatal(err)
+	// }
+	// Use resp.Auth.ClientToken for whatever you want
+
+	if text, err = json.MarshalIndent(app, "", "  "); err != nil {
+		log.Fatal(err)
+	}
+	if app.Debug {
+	}
+	fmt.Printf("%s\n", string(text))
+}
+
+#+end_src
+
+** build and test
+#+begin_src bash  :tangle /tmp/new-file.sh :results org :shebang #!/usr/bin/env bash :mkdirp yes :comments org :padline yes :tanglemode 0755
+export APP=${PWD##*/}
+export DEBUG=true
+sudo rm -f .autocfg.json .config.json .${APP}.json 
+sudo rm -f /etc/autocfg-ex/autocfg.json /etc/autocfg-ex/config.json
+sudo rm -f ${HOME}/.config/autocfg-ex/autocfg.json ${HOME}/.config/autocfg-ex/config.json
+echo ${PWD}
+function set-autocfg 
+{
+    cat <<EOF | sudo tee /etc/autocfg-ex/autocfg.json &> /dev/null
+{
+  "path": ".config.json",
+  "env": null
+}
+EOF
+    cat <<EOF | sudo tee /etc/autocfg-ex/config.json &> /dev/null
+{
+    "vault-addr": "https://vault.0",
+    "debug": true
+}
+EOF
+
+    cat <<EOF | tee ${HOME}/.config/autocfg-ex/autocfg.json &> /dev/null
+{
+  "path": ".config.json",
+  "env": null
+}
+EOF
+
+    cat <<EOF | tee ${HOME}/.config/autocfg-ex/config.json &> /dev/null
+{
+    "vault-addr": "https://vault.1",
+    "role": "zyx321..."
+}
+EOF
+
+    cat <<EOF > .autocfg.json
+{
+  "path": ".config.json",
+  "env": null
+}
+EOF
+    cat <<EOF > ${PWD}/.autocfg-ex.json
+{
+    "vault-addr": "https://vault.2",
+    "role": "tsr987...",
+    "secret": "qpo210...",
+    "debug": true
+}
+EOF
+}
+
+function set-local-config 
+{
+    rm -f .autocfg.json .config.json .${APP}.json
+    cat <<EOF > .${PWD##*/}.json
+{
+    "vault-addr": "https://vault.3",
+    "role": "zyx321...",
+    "secret": "wvu654...",
+    "debug": true
+}
+EOF
+    cat <<EOF > .config.json
+{
+    "vault-addr": "https://vault.4",
+    "role": "nml987...",
+    "debug": true
+}
+EOF
+}
+
+function doetc
+{
+    cat <<EOF | sudo tee /etc/autocfg-ex/autocfg.json &> /dev/null
+{
+  "path": ".config.json",
+  "env": null
+}
+EOF
+    cat <<EOF | sudo tee /etc/autocfg-ex/config.json &> /dev/null
+{
+    "vault-addr": "https://vault.etc.autocfg-ex.config.json",
+    "role": "etc-config",
+    "debug": true
+}
+EOF
+}
+function doHomdCfg
+{
+    cat <<EOF | tee ${HOME}/.config/autocfg-ex/autocfg.json &> /dev/null
+{
+  "path": ".config.json",
+  "env": null
+}
+EOF
+
+    cat <<EOF | tee ${HOME}/.config/autocfg-ex/config.json &> /dev/null
+{
+    "vault-addr": "https://vault.home.autocfg-ex.config.json",
+    "secret": "home-cfg..."
+}
+EOF
+}
+function doLocalCFG
+{
+    cat <<EOF > .${PWD##*/}.json
+{
+    "vault-addr": "https://vault.local.autocfg.json",
+    "filename": "local-autocfg-filename",
+    "debug": true
+}
+EOF
+    cat <<EOF > .config.json
+{
+    "vault-addr": "https://vault.config.json",
+    "debug": true
+}
+EOF
+}
+function doTmp
+{
+    cat <<EOF > /tmp/autocfg.vault.tmp.config.json
+{
+    "vault-addr": "https://autocfg.vault.tmp.json",
+    "role": "tmpdir-role",
+    "secret": "tmpdir-secret",
+    "debug": true
+}
+EOF
+}
+
+(
+    if ! env GO111MODULE=on go build -v 2>&1 ; then
+        echo build failure
+        exit 1
+    fi
+    rm -f /tmp/autocfg.vault.tmp.config.json
+    export APP=${PWD##*/}
+    export DEBUG=true
+    sudo rm -f .autocfg.json .config.json .${APP}.json 
+    sudo rm -f /etc/autocfg-ex/autocfg.json /etc/autocfg-ex/config.json
+    sudo rm -f ${HOME}/.config/autocfg-ex/autocfg.json ${HOME}/.config/autocfg-ex/config.json
+    export AUTOCFG_FILENAME=/tmp/autocfg.vault.tmp.config.json
+    echo AUTOCFG_FILENAME=/tmp/autocfg.vault.tmp.config.json
+    printf "%c" "-"{1..72}; echo
+    echo etc + local - no tmp file created
+    printf "%c" "-"{1..72}; echo
+    echo doetc doLocalCFG
+    doetc
+    doLocalCFG
+    printf "%c" "-"{1..72}; echo
+    ./${APP}
+    doTmp
+    sudo rm -f .autocfg.json .config.json .${APP}.json 
+    sudo rm -f /etc/autocfg-ex/autocfg.json /etc/autocfg-ex/config.json
+    sudo rm -f ${HOME}/.config/autocfg-ex/autocfg.json ${HOME}/.config/autocfg-ex/config.json
+    printf "%c" "-"{1..72}; echo
+    echo etc + local + tmp
+    printf "%c" "-"{1..72}; echo
+    export AUTOCFG_FILENAME=/tmp/autocfg.vault.tmp.config.json
+    echo AUTOCFG_FILENAME=/tmp/autocfg.vault.tmp.config.json
+    echo doetc doLocalCFG
+    doetc
+    doLocalCFG
+    printf "%c" "-"{1..72}; echo
+    ./${APP}
+
+    unset AUTOCFG_FILENAME
+    sudo rm -f .autocfg.json .config.json .${APP}.json 
+    sudo rm -f /etc/autocfg-ex/autocfg.json /etc/autocfg-ex/config.json
+    sudo rm -f ${HOME}/.config/autocfg-ex/autocfg.json ${HOME}/.config/autocfg-ex/config.json
+    printf "%c" "-"{1..72}; echo
+    echo one at a time etc home local
+    printf "%c" "-"{1..72}; echo
+    for n in doetc doHomdCfg doLocalCFG ; do
+        printf "%c" "-"{1..72}; echo
+        echo ${n}
+        ${n}
+        printf "%c" "-"{1..72}; echo
+        ./${APP}
+        #        ./${APP} --filename test-filename
+    done
+    exit 0
+    sudo rm -f .autocfg.json .config.json .${APP}.json 
+    sudo rm -f /etc/autocfg-ex/autocfg.json /etc/autocfg-ex/config.json
+    sudo rm -f ${HOME}/.config/autocfg-ex/autocfg.json ${HOME}/.config/autocfg-ex/config.json
+    for n in doLocalCFG doetc doHomdCfg ; do
+        ${n}
+        ./${APP}
+        #       ./${APP} --filename test-filename
+    done
+    sudo rm -f .autocfg.json .config.json .${APP}.json 
+    sudo rm -f /etc/autocfg-ex/autocfg.json /etc/autocfg-ex/config.json
+    sudo rm -f ${HOME}/.config/autocfg-ex/autocfg.json ${HOME}/.config/autocfg-ex/config.json
+    for n in doLocalCFG doHomdCfg doetc ; do
+        ${n}
+        ./${APP}
+        #       ./${APP} --filename test-filename
+    done
+    exit 0
+    ./${APP} && \
+        ./${APP} --filename test-filename && \
+        ./${APP} --role ghi789 --filename test-filename && \
+        env SECRET=jkl012 ./${APP} --filename test-filename  && \
+        env ROLE=mno345 SECRET=jkl012 ./${APP} --filename test-filename && \
+        env ROLE=mno345 SECRET=jkl012 ./${APP} --role=pqr678 --filename test-filename && \
+        env SECRET=jkl012 ./${APP} --role=pqr678 --filename test-filename && \
+        env SECRET=jkl012 ./${APP} --role=pqr678 --filename test-filename && \
+        env SECRET=jkl012 ./${APP} --role=pqr678 --filename test-filename &&  \
+        echo override secret via env SECRET && \
+        env SECRET=jkl012 ./${APP} --role=pqr678 --filename test-filename && \
+        echo override role via flag --role && \
+        env ./${APP} --role=pqr678 --filename test-filename && \
+        echo no override, search for file autoconfig. && \
+        env ./${APP} &&  \
+        rm -f .autocfg.json && \
+        set-local-config && \
+        if [[ ! -e .config.json ]]; then echo failed create of .config.json; exit 1; fi && \
+        echo remove .autocfg.json override, search for file ".${APP}.json" && \
+        env ./${APP} && \
+        true || \
+            echo fail 2>&1 | ~/bin/go-emacs-filter
+) 2>&1 || true
+#+end_src
+
+#+RESULTS:
+#+begin_src org
+/home/david/go/src/playground/autocfg/cmd/autocfg-ex
+AUTOCFG_FILENAME=/tmp/autocfg.vault.tmp.config.json
+------------------------------------------------------------------------
+etc + local - no tmp file created
+------------------------------------------------------------------------
+doetc doLocalCFG
+------------------------------------------------------------------------
+Mode DirectUnionMode
+{
+  "vault-addr": "https://vault.local.autocfg.json",
+  "role": "etc-config",
+  "secret": "",
+  "filename": "local-autocfg-filename",
+  "debug": true
+}
+Mode DirectFirstFoundMode
+{
+  "vault-addr": "https://vault.local.autocfg.json",
+  "role": "",
+  "secret": "",
+  "filename": "local-autocfg-filename",
+  "debug": true
+}
+------------------------------------------------------------------------
+etc + local + tmp
+------------------------------------------------------------------------
+AUTOCFG_FILENAME=/tmp/autocfg.vault.tmp.config.json
+doetc doLocalCFG
+------------------------------------------------------------------------
+Mode DirectUnionMode
+{
+  "vault-addr": "https://autocfg.vault.tmp.json",
+  "role": "tmpdir-role",
+  "secret": "tmpdir-secret",
+  "filename": "local-autocfg-filename",
+  "debug": true
+}
+Mode DirectFirstFoundMode
+{
+  "vault-addr": "https://autocfg.vault.tmp.json",
+  "role": "tmpdir-role",
+  "secret": "tmpdir-secret",
+  "debug": true
+}
+------------------------------------------------------------------------
+one at a time etc home local
+------------------------------------------------------------------------
+------------------------------------------------------------------------
+doetc
+------------------------------------------------------------------------
+Mode DirectUnionMode
+{
+  "vault-addr": "https://vault.etc.autocfg-ex.config.json",
+  "role": "etc-config",
+  "secret": "",
+  "debug": true
+}
+Mode DirectFirstFoundMode
+{
+  "vault-addr": "https://vault.etc.autocfg-ex.config.json",
+  "role": "etc-config",
+  "secret": "",
+  "debug": true
+}
+------------------------------------------------------------------------
+doHomdCfg
+------------------------------------------------------------------------
+Mode DirectUnionMode
+{
+  "vault-addr": "https://vault.home.autocfg-ex.config.json",
+  "role": "etc-config",
+  "secret": "home-cfg...",
+  "debug": true
+}
+Mode DirectFirstFoundMode
+{
+  "vault-addr": "https://vault.home.autocfg-ex.config.json",
+  "role": "",
+  "secret": "home-cfg...",
+  "debug": true
+}
+------------------------------------------------------------------------
+doLocalCFG
+------------------------------------------------------------------------
+Mode DirectUnionMode
+{
+  "vault-addr": "https://vault.local.autocfg.json",
+  "role": "etc-config",
+  "secret": "home-cfg...",
+  "filename": "local-autocfg-filename",
+  "debug": true
+}
+Mode DirectFirstFoundMode
+{
+  "vault-addr": "https://vault.local.autocfg.json",
+  "role": "",
+  "secret": "",
+  "filename": "local-autocfg-filename",
+  "debug": true
+}
+#+end_src
