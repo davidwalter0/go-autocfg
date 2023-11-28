@@ -26,11 +26,11 @@ func main() {
 	// var text []byte
 	// var err error
 	//	autocfg.Generator(app)
-	autocfg.SearchMode = autocfg.DirectUnionMode
-	fmt.Fprintf(os.Stderr, "Mode %v\n", autocfg.ModeName(autocfg.SearchMode))
+	autocfg.SetMode(autocfg.Direct | autocfg.First)
+	fmt.Fprintf(os.Stderr, "Mode %v\n", autocfg.SearchModeName(autocfg.GetMode()))
 	if app.Debug {
 		fmt.Println(autocfg.String())
-		fmt.Fprintf(os.Stderr, "Mode %v\n", autocfg.ModeName(autocfg.SearchMode))
+		fmt.Fprintf(os.Stderr, "Mode %v\n", autocfg.SearchModeName(autocfg.GetMode()))
 	}
 	autocfg.Configure(app)
 	if app.Debug {
@@ -39,8 +39,8 @@ func main() {
 
 	app = &App{}
 	autocfg.Reset()
-	autocfg.SearchMode = autocfg.DirectFirstFoundMode
-	fmt.Fprintf(os.Stderr, "Mode %v\n", autocfg.ModeName(autocfg.SearchMode))
+	autocfg.SetMode(autocfg.Direct | autocfg.Union)
+	fmt.Fprintf(os.Stderr, "Mode %v\n", autocfg.SearchModeName(autocfg.GetMode()))
 	autocfg.Configure(app)
 	// if text, err = json.MarshalIndent(app, "", "  "); err != nil {
 	// 	log.Fatal(err)
@@ -48,5 +48,18 @@ func main() {
 	if app.Debug {
 		autocfg.Dump(app)
 	}
+
+	app = &App{}
+	autocfg.Reset()
+	autocfg.SetMode(autocfg.Indirect | autocfg.Union)
+	fmt.Fprintf(os.Stderr, "Mode %v\n", autocfg.SearchModeName(autocfg.GetMode()))
+	autocfg.Configure(app)
+	// if text, err = json.MarshalIndent(app, "", "  "); err != nil {
+	// 	log.Fatal(err)
+	// }
+	if app.Debug {
+		autocfg.Dump(app)
+	}
+
 	// fmt.Printf("%s\n", string(text))
 }

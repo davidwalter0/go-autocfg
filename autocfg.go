@@ -11,7 +11,6 @@ import (
 	"path/filepath"
 	"reflect"
 	"strings"
-	"testing"
 
 	"github.com/davidwalter0/go-cfg"
 	"github.com/mitchellh/go-homedir"
@@ -51,79 +50,75 @@ the autocfg configuration file specified
 All modes evaluate environment variables but replace their values when
 any corresponding flag is set load a file or files.
 */
-type Modes int
+// type Modes int
+type SearchMode int
 
-// SearchMode The mode selected
-var SearchMode Modes = DirectUnionMode
+const (
+	// Union merges all found configuration files.
+	Union SearchMode = 1 << iota
+	// First is a short circuit evalutaion, stop on first found,
+	First
+	// Direct loads files from their names when found.
+	Direct
+	// Indirect loads an autocfg file, then uses it's path attribute to
+	// find the configuration file to load.
+	Indirect
+)
 
-func TestMap(t *testing.T) {
-	type Person struct {
-		Name string
-		Age  int
-	}
-	personMap := map[string]Person{
-		"Alice": {Name: "Alice", Age: 30},
-		"Bob":   {Name: "Bob", Age: 25},
-	}
+// var modes = []SearchMode{
+// 	Union | Direct,
+// 	Union | Indirect,
+// 	Union | Direct | Indirect,
+// 	First | Direct,
+// 	First | Indirect,
+// 	First | Direct | Indirect,
+// }
 
-	name, ok := personMap["Charlie"]
-
-	if ok {
-		fmt.Println("Found person with name:", name)
-	} else {
-		fmt.Println("Person with name 'Charlie' not found")
-	}
-
+// SearchModeMap maps a SearchMode to a text name of mode parts
+var SearchModeMap = map[SearchMode]string{
+	Direct:   "Direct",
+	Indirect: "Indirect",
+	// First is a short circuit evaluation i.e. stop evaluation after
+	// success.
+	First: "First",
+	// Union merges each new config with the obj.
+	Union: "Union",
 }
 
-// ModeName returns the string representation of the enum
-func ModeName(mode Modes) (name string) {
-	name = "Unknown or unset mode"
-	name = modes[mode]
-	// if name, ok := modes[mode]; ok {
-
-	// }
+// SearchModeName returns the string representation of the enum mask
+func SearchModeName(mode SearchMode) (name string) {
+	for bit := 1; bit < 32; bit <<= 1 {
+		fmt.Printf("%b %d %d %v\n", bit, bit, mode, int(mode)&bit)
+		if int(mode)&bit > 0 {
+			if len(name) > 0 {
+				name += "-" + SearchModeMap[SearchMode(bit)]
+			} else {
+				name += SearchModeMap[SearchMode(bit)]
+			}
+		}
+	}
 	return
 }
 
-var modes = map[Modes]string{
-	DirectAndIndirectMode:    "DirectAndIndirectMode",
-	DirectFirstFoundMode:     "DirectFirstFoundMode",
-	AutoConfigOnlyFirstFound: "AutoConfigOnlyFirstFound",
-	EnvThenFlagsOnly:         "EnvThenFlagsOnly",
-	DirectUnionMode:          "DirectUnionMode",
+// mode The mode selected
+var mode SearchMode = Union | Direct
+
+// SetMode and validate parameters for configure
+func SetMode(m SearchMode) (err error) {
+	mode = SearchMode(m)
+	if mode&First == First && mode&Union == Union {
+		// Use the default mode
+		mode = Union | Direct
+		err = fmt.Errorf("First and Union Modes are mutually exclusive")
+	}
+	return
 }
 
-const (
-	// DirectAndIndirectMode search both direct paths etc, config and local and indirect + AUTOCFG_FILENAME
-	DirectAndIndirectMode = iota
-	// DirectFirstFound searches local, config, etc paths and stops
-	// on the first file found.
-	DirectFirstFoundMode
-	// AutoConfigOnlyFirstFound searches local, config, etc paths and
-	// stops on the first file found.
-	AutoConfigOnlyFirstFound
-	// EnvThenFlagsOnly is a fallback to use the default configuration
-	// cfg mode, evaluating environment variables and overriding any
-	// environment settings when a corresponding flag is set.
-	EnvThenFlagsOnly
-	// DirectUnionMode search etc,config,local load each of them
-	// with union dominant, last configuration attribute is dominant
-	// replacing matches based on the attribute key.
-	DirectUnionMode
-
-/*
-// Search order etc,config,local (not implemented)
-DirectUnionMode
-// Search order etc,config,local (not implemented)
-DirectFirstFound
-// Search order local (.{{app name}}.json) ~/.config/{{app
-// name}}/config.json /etc/{{app name}}.json
-DirectLocalConfigEtc
-// Search order local ~/.config/{{app name}}/autocfg.json
-AutoLocalConfigEtc
-*/
-)
+// GetMode and validate parameters for configure
+func GetMode() (m SearchMode) {
+	m = mode
+	return
+}
 
 // AutoCfg auto config format specifies the path of a configuration
 // file to load and an environment variable map
@@ -174,9 +169,10 @@ func Generator(obj any) {
 
 func isPtr(obj any) (rc bool) {
 	var v reflect.Value = reflect.ValueOf(obj)
-	// Get the type of the struct that the value points to.
+	// Is this a pointer to an object?
 	if v.Kind() == reflect.Ptr {
 		var oType = v.Elem().Type()
+		// Does it point to a struct?
 		if oType.Kind() == reflect.Struct {
 			rc = true
 		}
@@ -218,7 +214,6 @@ func DirectAndIndirect(obj any) (found bool, err error) {
 
 // configure an object automagically
 func configure(obj any) (err error) {
-	var path string
 	if !isPtr(obj) {
 		return fmt.Errorf("arg obj any [%T]: object is not a pointer to struct", obj)
 	}
@@ -230,54 +225,27 @@ func configure(obj any) (err error) {
 			err = fmt.Errorf("%s %w", "no configuration found", err)
 		}
 	}()
-	switch SearchMode {
-	case DirectAndIndirectMode:
-		found, err = DirectAndIndirect(obj)
-		return
-	case DirectFirstFoundMode:
-		return DirectFirstFound(obj)
-	case DirectUnionMode:
-		return DirectUnionDirect(obj)
-	default:
-		if path, err = FindConfiguration(); err != nil {
-			if err = LoadDirect(path, obj); err == nil {
-				fmt.Printf("Found LoadDirect %v\n", path)
-				return
-			}
-			if err = LoadIndirect(path, obj); err == nil {
-				fmt.Printf("Found LoadIndirect %v\n", path)
-				return
-			}
-
-			// for _, path := range SearchCfgs {
-			// 	if err = LoadDirect(path, obj); err == nil {
-			// 		return
-			// 	}
-			// }
-		}
-		// if err = LoadIndirect(path, obj); err == nil {
-		// 	return
-		// 	//			err = fmt.Errorf("%s %w", path, err)
-		// }
-		// if !Strict {
-		// 	err = nil
-		// }
+	var direct, indirect []string
+	if Direct&mode == Direct {
+		direct = DirectFiles()
 	}
+	if Indirect&mode == Indirect {
+		indirect = IndirectFiles()
+	}
+	err = Load(obj, direct, indirect)
 	return
 }
 
-var debug bool
-
-// Debug verbose info
-func Debug() bool {
-	return debug
-}
-
-// DirectUnionDirect searches 3 paths for each config file. Found
-// files are unmarshaled to the object argument. Unmarshal obeys the
-// rules of 'union dominance' replacing any attribute(s) set by the
-// next unmarshaled configuration. The last attribute(s) unmarshaled
-// dominate - replace prior unmarshaling calls.
+// Load searches the paths provided
+//
+// When mode & (First | Direct ) return on the first configuration
+// file found.
+//
+// When mode & (Union | Direct) then unmarshal each found
+// configuration obeying rule of 'union dominance' replacing any
+// attribute(s) set by the next unmarshaled configuration. The last
+// attribute(s) unmarshaled dominate - replace prior unmarshaling
+// calls.
 //
 // The application name is evaluated from the binary name AKA
 // filepath.Base(os.Args[0])
@@ -285,10 +253,19 @@ func Debug() bool {
 // For an application named ex-app the files would be searched in the
 // following order:
 //
+// Union mode:
+//
 // - /etc/ex-app/config.json
 // - ${HOME}/.config/ex-app/config.json
 // - .ex-app.json
 // - AUTOCFG_FILENAME when the env variable is set
+//
+// First mode reverses the search order.
+//
+// - AUTOCFG_FILENAME when the env variable is set
+// - .ex-app.json
+// - ${HOME}/.config/ex-app/config.json
+// - /etc/ex-app/config.json
 //
 // If AUTOCFG_FILENAME is set that file dominates and is processed
 // last.
@@ -299,40 +276,62 @@ func Debug() bool {
 // After attributes are set from the environment, each corresponding
 // flag argument is evaluated and replaces the corresponding flag
 // struct variable.
-func DirectUnionDirect(obj any) (err error) {
-	var paths = []string{}
-	var etc = fmt.Sprintf("/etc/%s/config.json", pgm)
-	var config = fmt.Sprintf("${HOME}/.config/%s/config.json", pgm)
-	var local = fmt.Sprintf(".%s.json", pgm)
-	var ePath = os.Getenv("AUTOCFG_FILENAME")
-	if Debug() {
-		fmt.Println(etc)
-		fmt.Println(config)
-		fmt.Println(local)
-		fmt.Println(ePath)
+func Load(obj any, direct, indirect []string) (err error) {
+	// First mode is the same as short circuit evalutaion,
+	var shortCircuit = mode&First == First
+	for _, path := range direct {
+		if err = LoadDirect(path, obj); err == nil {
+			if shortCircuit {
+				return
+			}
+		}
 	}
-	paths = []string{etc, config, local, ePath}
-	for _, path := range paths {
-		err = LoadDirect(path, obj)
+	for _, path := range indirect {
+		if err = LoadIndirect(path, obj); err == nil {
+			if shortCircuit {
+				return
+			}
+		}
 	}
 	return
 }
 
-// DirectFirstFound searches 3 paths for each config file. The first found
-// file is unmarshaled to the object argument then returns.
+// IndirectLoad searches 3 paths for an indirect autocfg config
+// file. Found files are unmarshaled to an autocfg object argument.
+// The file is then parsed for it's path argument pointing to a
+// configuration file.
+//
+// When mode & (First | Indirect ) return on the first configuration
+// file found.
+//
+// When mode & (Union | Indirect) then for each indirect config file
+// found, unmarshal each found configuration obeying rule of 'union
+// dominance' replacing any attribute(s) set by the next unmarshaled
+// configuration. The last attribute(s) unmarshaled dominate - replace
+// prior unmarshaling calls.
 //
 // The application name is evaluated from the binary name AKA
 // filepath.Base(os.Args[0])
 //
-// For an application named ex-app the search order of the files is,
-// local first.
+// For an application named ex-app the indirect files would be
+// searched in the following order:
 //
-// If AUTOCFG_FILENAME is set that file is searched first.
+// Union mode:
+//
+// - /etc/ex-app/config.json
+// - ${HOME}/.config/ex-app/config.json
+// - .ex-app.json
+// - AUTOCFG_FILENAME when the env variable is set
+//
+// First mode reverses the search order.
 //
 // - AUTOCFG_FILENAME when the env variable is set
 // - .ex-app.json
 // - ${HOME}/.config/ex-app/config.json
 // - /etc/ex-app/config.json
+//
+// If AUTOCFG_FILENAME is set that file dominates and is processed
+// last.
 //
 // After the load of configuration from file(s) the env variables are
 // processed. Any env variables replace configurations unmarshaled.
@@ -340,25 +339,41 @@ func DirectUnionDirect(obj any) (err error) {
 // After attributes are set from the environment, each corresponding
 // flag argument is evaluated and replaces the corresponding flag
 // struct variable.
-func DirectFirstFound(obj any) (err error) {
-	var paths = []string{}
-	var ePath = os.Getenv("AUTOCFG_FILENAME")
+func IndirectLoad(obj any) (err error) {
+	var firstpaths = []string{}
+	var unionpaths = []string{}
 	var etc = fmt.Sprintf("/etc/%s/config.json", pgm)
 	var config = fmt.Sprintf("${HOME}/.config/%s/config.json", pgm)
 	var local = fmt.Sprintf(".%s.json", pgm)
+	var ePath = os.Getenv("AUTOCFG_FILENAME")
 	if Debug() {
-		fmt.Println(ePath)
-		fmt.Println(local)
-		fmt.Println(config)
 		fmt.Println(etc)
+		fmt.Println(config)
+		fmt.Println(local)
+		fmt.Println(ePath)
 	}
-	paths = []string{ePath, local, config, etc}
-	for _, path := range paths {
-		if err = LoadDirect(path, obj); err == nil {
-			return
+	unionpaths = []string{etc, config, local, ePath}
+	firstpaths = []string{ePath, local, config, etc}
+	if mode&First == First {
+		for _, path := range firstpaths {
+			// First is the same as short circuit evalutaion,
+			if err = LoadIndirect(path, obj); err == nil {
+				return
+			}
+		}
+	} else {
+		for _, path := range unionpaths {
+			err = LoadIndirect(path, obj)
 		}
 	}
 	return
+}
+
+var debug bool
+
+// Debug verbose info
+func Debug() bool {
+	return debug
 }
 
 // Dump an object via json MarshalIndent
@@ -489,6 +504,13 @@ func LoadDirect(path string, obj any) (err error) {
 	return
 }
 
+// reverse slice
+func reverse[S ~[]E, E any](s S) {
+	for i, j := 0, len(s)-1; i < j; i, j = i+1, j-1 {
+		s[i], s[j] = s[j], s[i]
+	}
+}
+
 // DirectFiles list of places to find a specified
 // configuration
 func DirectFiles() (paths []string) {
@@ -502,6 +524,11 @@ func DirectFiles() (paths []string) {
 	} else {
 		paths = []string{local, config, etc}
 	}
+	fmt.Fprintf(os.Stderr, "before if mode&First == First { \n\t%+v\n", paths)
+	if mode&Union == Union {
+		reverse(paths)
+	}
+	fmt.Fprintf(os.Stderr, "after if mode&First == First { \n\t%+v\n", paths)
 	return
 }
 
@@ -513,6 +540,9 @@ func IndirectFiles() (paths []string) {
 		paths = []string{ePath, AutoConfigPath(), LocalConfigPath()}
 	} else {
 		paths = []string{AutoConfigPath(), LocalConfigPath()}
+	}
+	if mode&Union == Union {
+		reverse(paths)
 	}
 	return
 }

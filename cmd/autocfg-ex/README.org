@@ -15,6 +15,161 @@
 
 :CONTENTS:
 :END:
+* enable binary flags
+
+use a model similar to [[file:~/go/src/playground/at-2023-11-27-182802/snippet.go::Dog AnimalType = 1 << iota][bitmask enum]
+
+#+begin_src gomod  :tangle /tmp/modes/go.mod  :mkdirp yes :padline yes
+module pkg/modes
+
+go 1.21.0
+#+end_src
+
+#+begin_src go :tangle /tmp/modes/main.go :results org :main no :package 'discard  :mkdirp yes :comments org :padline yes
+package main
+
+import (
+	"fmt"
+)
+
+// SearchMode ...
+type SearchMode int
+
+const (
+	Union SearchMode = 1 << iota
+	First
+	Direct 
+	Indirect
+)
+
+var modes = []SearchMode{
+	Union | Direct,
+	Union | Indirect,
+	Union | Direct | Indirect,
+	First | Direct,
+	First | Indirect,
+	First | Direct | Indirect,
+}
+
+var SearchModeMap = map[SearchMode]string{
+	Direct:   "Direct",
+	Indirect: "Indirect",
+	// short circuit aka first found mode
+	First: "First",
+	Union: "Union",
+}
+
+// SearchModeName returns the string representation of the enum
+
+func SearchModeName(mode SearchMode) (name string) {
+	//	name = "Unknown or unset mode"
+
+	for bit := 1; bit < 32;bit <<= 1 {
+		fmt.Printf("%b %d %d %v\n", bit, bit, mode, int(mode)&bit)
+		if int(mode)&bit > 0 {
+			if len(name) > 0 {
+				name += "-" + SearchModeMap[SearchMode(bit)]
+			} else {
+				name += SearchModeMap[SearchMode(bit)]
+			}
+		}
+		// bit <<= 1
+	}
+	for mode, name := range SearchModeMap {
+		fmt.Println("mode", mode, "name", name)
+	}
+
+	return
+}
+
+func main() {
+	for _, mode := range modes {
+		switch mode {
+		case Union | Direct:
+			fmt.Println("case Union | Direct [", SearchModeName(mode), "]")
+		case Union | Indirect:
+			fmt.Println("case Union | Indirect [", SearchModeName(mode), "]")
+		case Union | Direct | Indirect:
+			fmt.Println("case Union | Direct | Indirect [", SearchModeName(mode), "]")
+		case First | Direct | Indirect:
+			fmt.Println("case First | Direct | Indirect [", SearchModeName(mode), "]")
+		case First | Direct:
+			fmt.Println("case First | Direct [", SearchModeName(mode), "]")
+		case First | Indirect:
+			fmt.Println("case First | Indirect [", SearchModeName(mode), "]")
+		}
+	}
+
+}
+
+#+end_src
+
+#+RESULTS:
+#+begin_src org
+1 1 5 1
+10 2 5 0
+100 4 5 4
+1000 8 5 0
+10000 16 5 0
+mode 4 name Direct
+mode 8 name Indirect
+mode 2 name First
+mode 1 name Union
+case Union | Direct [ Union-Direct ]
+1 1 9 1
+10 2 9 0
+100 4 9 0
+1000 8 9 8
+10000 16 9 0
+mode 4 name Direct
+mode 8 name Indirect
+mode 2 name First
+mode 1 name Union
+case Union | Indirect [ Union-Indirect ]
+1 1 13 1
+10 2 13 0
+100 4 13 4
+1000 8 13 8
+10000 16 13 0
+mode 4 name Direct
+mode 8 name Indirect
+mode 2 name First
+mode 1 name Union
+case Union | Direct | Indirect [ Union-Direct-Indirect ]
+1 1 6 0
+10 2 6 2
+100 4 6 4
+1000 8 6 0
+10000 16 6 0
+mode 4 name Direct
+mode 8 name Indirect
+mode 2 name First
+mode 1 name Union
+case First | Direct [ First-Direct ]
+1 1 10 0
+10 2 10 2
+100 4 10 0
+1000 8 10 8
+10000 16 10 0
+mode 4 name Direct
+mode 8 name Indirect
+mode 2 name First
+mode 1 name Union
+case First | Indirect [ First-Indirect ]
+1 1 14 0
+10 2 14 2
+100 4 14 4
+1000 8 14 8
+10000 16 14 0
+mode 4 name Direct
+mode 8 name Indirect
+mode 2 name First
+mode 1 name Union
+case First | Direct | Indirect [ First-Direct-Indirect ]
+#+end_src
+
+#+transclude: [[file:~/go/src/playground/at-2023-11-27-182802/snippet.go]]
+
 * last working testing on DirectAndIndirect
 ** Next steps merge / union dominant 
 * appcfg example
@@ -318,7 +473,33 @@ etc + local - no tmp file created
 ------------------------------------------------------------------------
 doetc doLocalCFG
 ------------------------------------------------------------------------
-Mode DirectUnionMode
+1 1 6 0
+10 2 6 2
+100 4 6 4
+1000 8 6 0
+10000 16 6 0
+Mode First-Direct
+before if mode&First == First { 
+	[/tmp/autocfg.vault.tmp.config.json .autocfg-ex.json ${HOME}/.config/autocfg-ex/config.json /etc/autocfg-ex/config.json]
+after if mode&First == First { 
+	[/tmp/autocfg.vault.tmp.config.json .autocfg-ex.json ${HOME}/.config/autocfg-ex/config.json /etc/autocfg-ex/config.json]
+{
+  "vault-addr": "https://vault.local.autocfg.json",
+  "role": "",
+  "secret": "",
+  "filename": "local-autocfg-filename",
+  "debug": true
+}
+1 1 5 1
+10 2 5 0
+100 4 5 4
+1000 8 5 0
+10000 16 5 0
+Mode Union-Direct
+before if mode&First == First { 
+	[/tmp/autocfg.vault.tmp.config.json .autocfg-ex.json ${HOME}/.config/autocfg-ex/config.json /etc/autocfg-ex/config.json]
+after if mode&First == First { 
+	[/etc/autocfg-ex/config.json ${HOME}/.config/autocfg-ex/config.json .autocfg-ex.json /tmp/autocfg.vault.tmp.config.json]
 {
   "vault-addr": "https://vault.local.autocfg.json",
   "role": "etc-config",
@@ -326,12 +507,16 @@ Mode DirectUnionMode
   "filename": "local-autocfg-filename",
   "debug": true
 }
-Mode DirectFirstFoundMode
+1 1 9 1
+10 2 9 0
+100 4 9 0
+1000 8 9 8
+10000 16 9 0
+Mode Union-Indirect
 {
-  "vault-addr": "https://vault.local.autocfg.json",
+  "vault-addr": "",
   "role": "",
   "secret": "",
-  "filename": "local-autocfg-filename",
   "debug": true
 }
 ------------------------------------------------------------------------
@@ -340,7 +525,32 @@ etc + local + tmp
 AUTOCFG_FILENAME=/tmp/autocfg.vault.tmp.config.json
 doetc doLocalCFG
 ------------------------------------------------------------------------
-Mode DirectUnionMode
+1 1 6 0
+10 2 6 2
+100 4 6 4
+1000 8 6 0
+10000 16 6 0
+Mode First-Direct
+before if mode&First == First { 
+	[/tmp/autocfg.vault.tmp.config.json .autocfg-ex.json ${HOME}/.config/autocfg-ex/config.json /etc/autocfg-ex/config.json]
+after if mode&First == First { 
+	[/tmp/autocfg.vault.tmp.config.json .autocfg-ex.json ${HOME}/.config/autocfg-ex/config.json /etc/autocfg-ex/config.json]
+{
+  "vault-addr": "https://autocfg.vault.tmp.json",
+  "role": "tmpdir-role",
+  "secret": "tmpdir-secret",
+  "debug": true
+}
+1 1 5 1
+10 2 5 0
+100 4 5 4
+1000 8 5 0
+10000 16 5 0
+Mode Union-Direct
+before if mode&First == First { 
+	[/tmp/autocfg.vault.tmp.config.json .autocfg-ex.json ${HOME}/.config/autocfg-ex/config.json /etc/autocfg-ex/config.json]
+after if mode&First == First { 
+	[/etc/autocfg-ex/config.json ${HOME}/.config/autocfg-ex/config.json .autocfg-ex.json /tmp/autocfg.vault.tmp.config.json]
 {
   "vault-addr": "https://autocfg.vault.tmp.json",
   "role": "tmpdir-role",
@@ -348,11 +558,16 @@ Mode DirectUnionMode
   "filename": "local-autocfg-filename",
   "debug": true
 }
-Mode DirectFirstFoundMode
+1 1 9 1
+10 2 9 0
+100 4 9 0
+1000 8 9 8
+10000 16 9 0
+Mode Union-Indirect
 {
-  "vault-addr": "https://autocfg.vault.tmp.json",
-  "role": "tmpdir-role",
-  "secret": "tmpdir-secret",
+  "vault-addr": "",
+  "role": "",
+  "secret": "",
   "debug": true
 }
 ------------------------------------------------------------------------
@@ -361,41 +576,127 @@ one at a time etc home local
 ------------------------------------------------------------------------
 doetc
 ------------------------------------------------------------------------
-Mode DirectUnionMode
+1 1 6 0
+10 2 6 2
+100 4 6 4
+1000 8 6 0
+10000 16 6 0
+Mode First-Direct
+before if mode&First == First { 
+	[.autocfg-ex.json ${HOME}/.config/autocfg-ex/config.json /etc/autocfg-ex/config.json]
+after if mode&First == First { 
+	[.autocfg-ex.json ${HOME}/.config/autocfg-ex/config.json /etc/autocfg-ex/config.json]
 {
   "vault-addr": "https://vault.etc.autocfg-ex.config.json",
   "role": "etc-config",
   "secret": "",
   "debug": true
 }
-Mode DirectFirstFoundMode
+1 1 5 1
+10 2 5 0
+100 4 5 4
+1000 8 5 0
+10000 16 5 0
+Mode Union-Direct
+before if mode&First == First { 
+	[.autocfg-ex.json ${HOME}/.config/autocfg-ex/config.json /etc/autocfg-ex/config.json]
+after if mode&First == First { 
+	[/etc/autocfg-ex/config.json ${HOME}/.config/autocfg-ex/config.json .autocfg-ex.json]
 {
   "vault-addr": "https://vault.etc.autocfg-ex.config.json",
   "role": "etc-config",
+  "secret": "",
+  "debug": true
+}
+1 1 9 1
+10 2 9 0
+100 4 9 0
+1000 8 9 8
+10000 16 9 0
+Mode Union-Indirect
+{
+  "vault-addr": "",
+  "role": "",
   "secret": "",
   "debug": true
 }
 ------------------------------------------------------------------------
 doHomdCfg
 ------------------------------------------------------------------------
-Mode DirectUnionMode
+1 1 6 0
+10 2 6 2
+100 4 6 4
+1000 8 6 0
+10000 16 6 0
+Mode First-Direct
+before if mode&First == First { 
+	[.autocfg-ex.json ${HOME}/.config/autocfg-ex/config.json /etc/autocfg-ex/config.json]
+after if mode&First == First { 
+	[.autocfg-ex.json ${HOME}/.config/autocfg-ex/config.json /etc/autocfg-ex/config.json]
+{
+  "vault-addr": "https://vault.home.autocfg-ex.config.json",
+  "role": "",
+  "secret": "home-cfg...",
+  "debug": true
+}
+1 1 5 1
+10 2 5 0
+100 4 5 4
+1000 8 5 0
+10000 16 5 0
+Mode Union-Direct
+before if mode&First == First { 
+	[.autocfg-ex.json ${HOME}/.config/autocfg-ex/config.json /etc/autocfg-ex/config.json]
+after if mode&First == First { 
+	[/etc/autocfg-ex/config.json ${HOME}/.config/autocfg-ex/config.json .autocfg-ex.json]
 {
   "vault-addr": "https://vault.home.autocfg-ex.config.json",
   "role": "etc-config",
   "secret": "home-cfg...",
   "debug": true
 }
-Mode DirectFirstFoundMode
+1 1 9 1
+10 2 9 0
+100 4 9 0
+1000 8 9 8
+10000 16 9 0
+Mode Union-Indirect
 {
-  "vault-addr": "https://vault.home.autocfg-ex.config.json",
+  "vault-addr": "",
   "role": "",
-  "secret": "home-cfg...",
+  "secret": "",
   "debug": true
 }
 ------------------------------------------------------------------------
 doLocalCFG
 ------------------------------------------------------------------------
-Mode DirectUnionMode
+1 1 6 0
+10 2 6 2
+100 4 6 4
+1000 8 6 0
+10000 16 6 0
+Mode First-Direct
+before if mode&First == First { 
+	[.autocfg-ex.json ${HOME}/.config/autocfg-ex/config.json /etc/autocfg-ex/config.json]
+after if mode&First == First { 
+	[.autocfg-ex.json ${HOME}/.config/autocfg-ex/config.json /etc/autocfg-ex/config.json]
+{
+  "vault-addr": "https://vault.local.autocfg.json",
+  "role": "",
+  "secret": "",
+  "filename": "local-autocfg-filename",
+  "debug": true
+}
+1 1 5 1
+10 2 5 0
+100 4 5 4
+1000 8 5 0
+10000 16 5 0
+Mode Union-Direct
+before if mode&First == First { 
+	[.autocfg-ex.json ${HOME}/.config/autocfg-ex/config.json /etc/autocfg-ex/config.json]
+after if mode&First == First { 
+	[/etc/autocfg-ex/config.json ${HOME}/.config/autocfg-ex/config.json .autocfg-ex.json]
 {
   "vault-addr": "https://vault.local.autocfg.json",
   "role": "etc-config",
@@ -403,12 +704,16 @@ Mode DirectUnionMode
   "filename": "local-autocfg-filename",
   "debug": true
 }
-Mode DirectFirstFoundMode
+1 1 9 1
+10 2 9 0
+100 4 9 0
+1000 8 9 8
+10000 16 9 0
+Mode Union-Indirect
 {
-  "vault-addr": "https://vault.local.autocfg.json",
+  "vault-addr": "https://vault.config.json",
   "role": "",
   "secret": "",
-  "filename": "local-autocfg-filename",
   "debug": true
 }
 #+end_src

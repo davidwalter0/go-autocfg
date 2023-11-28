@@ -51,7 +51,5 @@ configuration in 1.
 3. flag - Flags are evaluated from the command line. When flags are
 specified, set corresponding object members from command line flag
 argument and replace option specified in 1. or 2.
-
 */
-
 package autocfg
