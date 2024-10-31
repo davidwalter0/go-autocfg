@@ -11,11 +11,11 @@ import (
 
 // App config options
 type App struct {
-	VaultAddr string `json:"vault-address"`
-	Role      string `json:"role"`
-	Secret    string `json:"secret"`
-	Filename  string `json:"filename,omitempty" doc:"filename for command line flag file name override"`
-	Debug     bool   `json:"debug,omitempty"`
+	VaultAddr   string `json:"vault-address"`
+	Role        string `json:"role"`
+	Secret      string `json:"secret"`
+	AutoCfgFile string `json:"autocfgfile,omitempty" doc:"auto config file name override"`
+	Debug       bool   `json:"debug,omitempty"`
 }
 
 var app = &App{}
@@ -24,8 +24,10 @@ var text []byte
 var client *api.Client
 
 func main() {
+	_, _ = autocfg.SetMode(autocfg.Direct | autocfg.Indirect | autocfg.Union)
+	fmt.Println(autocfg.SetMode(autocfg.Direct | autocfg.Union))
 	autocfg.Configure(app)
-	autocfg.Dump(app)
+	// autocfg.Dump(app)
 	var err error
 	var conf = api.DefaultConfig()
 	client, err = api.NewClient(conf)

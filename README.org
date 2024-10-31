@@ -1,0 +1,624 @@
+
+:PROPERTIES:
+:ID: b651b783-21f8-4ca8-8c13-f54f64d01b16
+:CREATED: [2024-02-14 Wed 20:19]
+:FILE: /home/david/go/src/github.com/davidwalter0/autocfg/README.org
+:END:
+#+title: Notes
+#+options: toc:nil
+
+* TOC      :noexport:
+:PROPERTIES:
+:CUSTOM_ID: toc
+:TOC:      :include all :depth 4 :force (depth) :ignore (this) :local (depth)
+:END:
+
+:CONTENTS:
+- [[#autocfg][autocfg]]
+  - [[#autocfg-example][autocfg example]]
+    - [[#configjson][config.json]]
+    - [[#simple-go-program][simple go program]]
+    - [[#build-and-run][build and run]]
+  - [[#go-doc][go doc]]
+:END:
+
+* autocfg
+:PROPERTIES:
+:ID:       164ff6c2-672f-421a-a02f-3fbf74b1fed9
+:CUSTOM_ID: autocfg
+:ROAM_ALIASES: autocfg
+:END:
+** autocfg example
+:PROPERTIES:
+:ID:       95a1e251-c415-4338-8f0e-27377c012620
+:CUSTOM_ID: autocfg-example
+:ROAM_ALIASES: autocfg-example
+:END:
+*** config.json
+:PROPERTIES:
+:ID:       a73dbfc1-f5bc-4183-9136-2e3c396d6b0d
+:CUSTOM_ID: config-json
+:ROAM_ALIASES: config-json
+:END:
+
+#+begin_src js  :tangle cmd/example-autocfg/.example-autocfg.json :mkdirp yes :mkdirp yes
+{
+    "vault-addr": "https://vault.localhost",
+    "role": "ae6...",
+    "secret": "4f2..."
+}
+#+end_src
+*** simple go program
+:PROPERTIES:
+:ID:       1bf2fb72-208a-41d7-b8a1-11414cc08ea0
+:CUSTOM_ID: simple-go-program
+:ROAM_ALIASES: simple-go-program
+:END:
+
+#+begin_src go :tangle cmd/example-autocfg/main.go :results org :main no :package 'discard :mkdirp yes
+package main
+
+import (
+  "fmt"
+  "os"
+  "path"
+
+  "github.com/davidwalter0/go-autocfg"
+)
+
+var pgm = path.Base(os.Args[0])
+
+// App config options
+type App struct {
+  VaultAddr string `json:"vault-addr"`
+  Role      string `json:"role"`
+  Secret    string `json:"secret"`
+}
+
+var app = &App{}
+var text []byte
+
+func main() {
+  fmt.Printf("Usage %s\n", pgm)
+  autocfg.Generator(app, true)
+  autocfg.SetMode(autocfg.Indirect)
+  autocfg.Configure(app)
+  autocfg.Dump(app)
+  autocfg.Usage(pgm)
+
+  autocfg.Reset()
+  autocfg.SetMode(autocfg.Direct | autocfg.Union)
+  autocfg.Configure(app)
+  autocfg.Dump(app)
+  autocfg.Usage(pgm)
+}
+#+end_src
+
+#+RESULTS:
+#+begin_src org
+Usage of go-src-3ihmH2:
+
+go-src-3ihmH2
+
+  -role string
+    	 Env ROLE                             : (role) (string)
+  -secret string
+    	 Env SECRET                           : (secret) (string)
+  -vault-addr string
+    	 Env VAULT_ADDR                       : (vault-addr) (string)
+
+Usage of go-src-3ihmH2:
+
+go-src-3ihmH2
+
+  -role string
+    	 Env ROLE                             : (role) (string)
+  -secret string
+    	 Env SECRET                           : (secret) (string)
+  -vault-addr string
+    	 Env VAULT_ADDR                       : (vault-addr) (string) (default "https://or.vault.comcast.com")
+[ Babel evaluation exited with code 0 ]
+#+end_src
+
+*** build and run
+:PROPERTIES:
+:ID:       3d6cc9c0-6182-456e-8d0c-484efc6c5712
+:CUSTOM_ID: build-and-run
+:ROAM_ALIASES: build-and-run
+:END:
+#+begin_src bash  :tangle /tmp/new-file.sh :results org :shebang #!/usr/bin/env bash :mkdirp yes :comments org :padline yes :tangle-mode o0755
+(
+    # echo VAULT_ADDR=${VAULT_ADDR}
+    unset VAULT_ADDR
+    cd cmd/example-autocfg/
+    env CGO_ENABLED=0 go build -v -o config
+    env CGO_ENABLED=0 go build -v
+#    ./config --help 2>&1
+    ./config
+    export VAULT_ADDR=https://vault.env.var
+    ./example-autocfg --vault-addr https://vault-flag --role role-flag --secret secret-flag
+    echo VAULT_ADDR=${VAULT_ADDR}
+    ./example-autocfg
+    unset VAULT_ADDR
+    echo VAULT_ADDR=${VAULT_ADDR}
+    ./example-autocfg
+
+) 2>&1
+#+end_src
+
+#+RESULTS:
+#+begin_src org
+github.com/davidwalter0/go-autocfg/cmd/example-autocfg
+Argv[0] config
+------------------------------------------------------------------------
+Mode Direct-Indirect
+{
+  "vault-addr": "https://dot.config.vault",
+  "role": "dot.config.json:ae6...",
+  "secret": "dot.config.json:4f2..."
+}
+------------------------------------------------------------------------
+Mode Indirect
+{
+  "vault-addr": "https://config.vault",
+  "role": "config:ae6...",
+  "secret": "config:4f2..."
+}
+------------------------------------------------------------------------
+Mode Simple
+{
+  "vault-addr": "https://dot.config.vault",
+  "role": "dot.config.json:ae6...",
+  "secret": "dot.config.json:4f2..."
+}
+------------------------------------------------------------------------
+Mode Simple
+{
+  "vault-addr": "https://dot.config.vault",
+  "role": "dot.config.json:ae6...",
+  "secret": "dot.config.json:4f2..."
+}
+------------------------------------------------------------------------
+Mode Union-Direct
+{
+  "vault-addr": "https://dot.config.vault",
+  "role": "dot.config.json:ae6...",
+  "secret": "dot.config.json:4f2..."
+}
+------------------------------------------------------------------------
+Mode Simple config file some-junk-config-file
+{
+  "vault-addr": "https://vault.some-junk-config-file",
+  "role": "some-junk-config-file:ae6...",
+  "secret": "some-junk-config-file:4f2..."
+}
+Argv[0] example-autocfg
+------------------------------------------------------------------------
+Mode Direct-Indirect
+{
+  "vault-addr": "https://vault-flag",
+  "role": "role-flag",
+  "secret": "secret-flag"
+}
+------------------------------------------------------------------------
+Mode Indirect
+{
+  "vault-addr": "https://vault-flag",
+  "role": "role-flag",
+  "secret": "secret-flag"
+}
+------------------------------------------------------------------------
+Mode Simple
+{
+  "vault-addr": "https://vault-flag",
+  "role": "role-flag",
+  "secret": "secret-flag"
+}
+------------------------------------------------------------------------
+Mode Simple
+{
+  "vault-addr": "https://vault-flag",
+  "role": "role-flag",
+  "secret": "secret-flag"
+}
+------------------------------------------------------------------------
+Mode Union-Direct
+{
+  "vault-addr": "https://vault-flag",
+  "role": "role-flag",
+  "secret": "secret-flag"
+}
+------------------------------------------------------------------------
+Mode Simple config file some-junk-config-file
+{
+  "vault-addr": "https://vault-flag",
+  "role": "role-flag",
+  "secret": "secret-flag"
+}
+VAULT_ADDR=https://vault.env.var
+Argv[0] example-autocfg
+------------------------------------------------------------------------
+Mode Direct-Indirect
+{
+  "vault-addr": "https://vault.env.var",
+  "role": "dot.example-autocfg:ae6...",
+  "secret": "dot.example-autocfg:4f2..."
+}
+------------------------------------------------------------------------
+Mode Indirect
+{
+  "vault-addr": "https://vault.env.var",
+  "role": "config:ae6...",
+  "secret": "config:4f2..."
+}
+------------------------------------------------------------------------
+Mode Simple
+{
+  "vault-addr": "https://vault.env.var",
+  "role": "dot.config.json:ae6...",
+  "secret": "dot.config.json:4f2..."
+}
+------------------------------------------------------------------------
+Mode Simple
+{
+  "vault-addr": "https://vault.env.var",
+  "role": "dot.config.json:ae6...",
+  "secret": "dot.config.json:4f2..."
+}
+------------------------------------------------------------------------
+Mode Union-Direct
+{
+  "vault-addr": "https://vault.env.var",
+  "role": "dot.example-autocfg:ae6...",
+  "secret": "dot.example-autocfg:4f2..."
+}
+------------------------------------------------------------------------
+Mode Simple config file some-junk-config-file
+{
+  "vault-addr": "https://vault.env.var",
+  "role": "some-junk-config-file:ae6...",
+  "secret": "some-junk-config-file:4f2..."
+}
+VAULT_ADDR=
+Argv[0] example-autocfg
+------------------------------------------------------------------------
+Mode Direct-Indirect
+{
+  "vault-addr": "https://vault.dot.example-autocfg",
+  "role": "dot.example-autocfg:ae6...",
+  "secret": "dot.example-autocfg:4f2..."
+}
+------------------------------------------------------------------------
+Mode Indirect
+{
+  "vault-addr": "https://config.vault",
+  "role": "config:ae6...",
+  "secret": "config:4f2..."
+}
+------------------------------------------------------------------------
+Mode Simple
+{
+  "vault-addr": "https://dot.config.vault",
+  "role": "dot.config.json:ae6...",
+  "secret": "dot.config.json:4f2..."
+}
+------------------------------------------------------------------------
+Mode Simple
+{
+  "vault-addr": "https://dot.config.vault",
+  "role": "dot.config.json:ae6...",
+  "secret": "dot.config.json:4f2..."
+}
+------------------------------------------------------------------------
+Mode Union-Direct
+{
+  "vault-addr": "https://vault.dot.example-autocfg",
+  "role": "dot.example-autocfg:ae6...",
+  "secret": "dot.example-autocfg:4f2..."
+}
+------------------------------------------------------------------------
+Mode Simple config file some-junk-config-file
+{
+  "vault-addr": "https://vault.some-junk-config-file",
+  "role": "some-junk-config-file:ae6...",
+  "secret": "some-junk-config-file:4f2..."
+}
+#+end_src
+
+
+** go doc
+:PROPERTIES:
+:ID:       6fa962b5-ae3e-4952-b9ed-4c1a12f12a96
+:CUSTOM_ID: go-doc
+:ROAM_ALIASES: go-doc
+:END:
+#+begin_src bash  :tangle /tmp/new-file.sh :results org :shebang #!/usr/bin/env bash :mkdirp yes :comments org :padline yes :tangle-mode o0755
+go doc --all ./
+#+end_src
+
+#+RESULTS:
+#+begin_src org
+package autocfg // import "github.com/davidwalter0/go-autocfg"
+
+Package autocfg allows pointing configuration data to config option settings
+matching your work environment
+
+Overview.
+
+When DirectUnionMode is set autocfg priorizes configuration loading each of the
+files in the following list each file's values replace any previously found and
+unmarshaled files.
+
+  - /etc/{{program-name}}/config.json
+  - ~/.config/{{program-name}}/config.json
+  - .{{program-name}}.json in the current directory
+  - When set a file named in the environment variable AUTOCFG_FILENAME
+
+The last file found has priority or dominates prior configurations loaded.
+
+When DirectFirstFoundMode is set autocfg loads the first found configuration and
+stops loading when a file is found.
+
+  - When set a file named in the environment variable AUTOCFG_FILENAME
+  - .{{program-name}}.json in the current directory
+  - ~/.config/{{program-name}}/config.json
+  - /etc/{{program-name}}/config.json
+
+When DirectAndIndirectMode is set then search DirectFirstFoundMode. If no
+configuration is found then search indirect autocfg files in the following
+3 places and load from the first file found. For an indirect auto config is
+performed the following order:
+
+ 1. A path named in the environment variable AUTOCFG_FILENAME
+ 2. .autocfg.json in the current working directory
+ 3. ~/.config/{{program name}}/autocfg.json, where {{program name}} is
+    path.Base(os.Args[0]), path.Ext(os.Args[0]))
+
+The configuration if found can be loaded directly from the path returned by
+FindConfiguration()
+
+The order of evaluation of configuration options follows this sequence.
+
+1. file - Files must be created and saved prior to execute. When a configuration
+file is found, load and unmarshal to the app object supplied as the argument to
+the configuration call.
+
+2. env - Environment variables are static pre-runtime; but may precede the
+execution call, when an env variable is set, use that value and replace an
+existing value(s) option specified in a file loaded configuration in 1.
+
+3. flag - Flags are evaluated from the command line. When flags are specified,
+set corresponding object members from command line flag argument and replace
+option specified in 1. or 2.
+
+VARIABLES
+
+var FoundPath string
+    FoundPath during configure
+
+var SearchModeMap = map[SearchMode]string{
+	Direct:   "Direct",
+	Indirect: "Indirect",
+
+	First: "First",
+
+	Union: "Union",
+}
+    SearchModeMap maps a SearchMode to a text name of mode parts
+
+var Strict bool
+    Strict forces finding a configuration file
+
+
+FUNCTIONS
+
+func AutoConfigPath() string
+    AutoConfigPath from the `autocfg.json` file in the {{application}}
+    subdirectory of the users home .config directory
+
+func Configure(obj any) (err error)
+    Configure an object automagically
+
+func Debug() bool
+    Debug verbose info
+
+func DirectAndIndirect(obj any) (found bool, err error)
+    DirectAndIndirect searches and loads the first configuration file found
+
+    - When set a file named in the environment variable
+    AUTOCFG_FILENAME - .{{program-name}}.json in the current directory -
+    ~/.config/{{program-name}}/config.json - /etc/{{program-name}}/config.json
+
+func DirectFiles() (paths []string)
+    DirectFiles list of places to find a specified configuration
+
+func Dump(obj any)
+    Dump an object via json MarshalIndent
+
+func ExpandEnvEvalTilde(path string) string
+    ExpandEnvEvalTilde expand ${var} and ~/
+
+func FindConfiguration() (path string, err error)
+    FindConfiguration checks for direct config files then autoconfig spec named
+    in the env variable AUTOCFG_FILENAME, in the directory `.autocfg.json` or
+    `~/.config/{{program}}/autocfg.json`
+
+func Generator(obj any, overwrite bool)
+    Generator empty sample configuration files using the default autocfg type
+    and an example object and place them in /tmp/dot.autocfg.json pointing it's
+    path to /tmp/dot.config.json These can use used to confirm format and values
+    of the arguments. Notice that if omitempty or similar json parameters are
+    present in the tags the json Marshaling of the object are not included in
+    the example configuration. Replace prior definition when overwrite is true
+
+func IndirectFiles() (paths []string)
+    IndirectFiles returns the list of auto config search paths
+
+func IndirectLoad(obj any) (err error)
+    IndirectLoad searches 3 paths for an indirect autocfg config file. Found
+    files are unmarshaled to an autocfg object argument. The file is then parsed
+    for it's path argument pointing to a configuration file.
+
+    When mode & (First | Indirect ) return on the first configuration file
+    found.
+
+    When mode & (Union | Indirect) then for each indirect config file found,
+    unmarshal each found configuration obeying rule of 'union dominance'
+    replacing any attribute(s) set by the next unmarshaled configuration. The
+    last attribute(s) unmarshaled dominate - replace prior unmarshaling calls.
+
+    The application name is evaluated from the binary name AKA
+    filepath.Base(os.Args[0])
+
+    For an application named ex-app the indirect files would be searched in the
+    following order:
+
+    Union mode:
+
+    - /etc/ex-app/config.json - ${HOME}/.config/ex-app/config.json -
+    .ex-app.json - AUTOCFG_FILENAME when the env variable is set
+
+    First mode reverses the search order.
+
+    - AUTOCFG_FILENAME when the env variable is set - .ex-app.json -
+    ${HOME}/.config/ex-app/config.json - /etc/ex-app/config.json
+
+    If AUTOCFG_FILENAME is set that file dominates and is processed last.
+
+    After the load of configuration from file(s) the env variables are
+    processed. Any env variables replace configurations unmarshaled.
+
+    After attributes are set from the environment, each corresponding flag
+    argument is evaluated and replaces the corresponding flag struct variable.
+
+func Load(obj any, direct, indirect []string) (err error)
+    Load searches the paths provided
+
+    When mode & (First | Direct ) return on the first configuration file found.
+
+    When mode & (Union | Direct) then unmarshal each found configuration
+    obeying rule of 'union dominance' replacing any attribute(s) set by the
+    next unmarshaled configuration. The last attribute(s) unmarshaled dominate -
+    replace prior unmarshaling calls.
+
+    The application name is evaluated from the binary name AKA
+    filepath.Base(os.Args[0])
+
+    For an application named ex-app the files would be searched in the following
+    order:
+
+    Union mode:
+
+    - /etc/ex-app/config.json - ${HOME}/.config/ex-app/config.json -
+    .ex-app.json - AUTOCFG_FILENAME when the env variable is set
+
+    First mode reverses the search order.
+
+    - AUTOCFG_FILENAME when the env variable is set - .ex-app.json -
+    ${HOME}/.config/ex-app/config.json - /etc/ex-app/config.json
+
+    If AUTOCFG_FILENAME is set that file dominates and is processed last.
+
+    After the load of configuration from file(s) the env variables are
+    processed. Any env variables replace configurations unmarshaled.
+
+    After attributes are set from the environment, each corresponding flag
+    argument is evaluated and replaces the corresponding flag struct variable.
+
+func LoadDirect(path string, obj any) (err error)
+    LoadDirect read an application config file
+
+func LoadIndirect(path string, obj any) (err error)
+    LoadIndirect from an auto config path. Read an autocfg file,
+
+func LocalConfigPath() string
+    LocalConfigPath from the `autocfg.json` file in the current work directory
+
+func MultiCallConfigure(obj any) (err error)
+    MultiCallConfigure an object automagically
+
+func PrefixMultiCallConfigure(prefix string, obj any) (err error)
+    PrefixMultiCallConfigure an object automagically with prefix to flag args
+
+func Reset()
+    Reset flags for reconfigure
+
+func SearchModeName(mode SearchMode) (name string)
+    SearchModeName returns the string representation of the enum mask
+
+func SearchPaths() (list []string)
+    SearchPaths as a string
+
+func SetMode(m SearchMode) (err error)
+    SetMode and validate parameters for configure
+
+func String() (text string)
+    String shows load order
+
+func UnprefixedMultiCallConfigure(obj any) (err error)
+    UnprefixedMultiCallConfigure an object automagically
+
+func Usage(addText string)
+    Usage from cfg tag parse with additional help text from the argument
+
+func Verbose(v bool)
+    Verbose logging for status info
+
+
+TYPES
+
+type AutoCfg struct {
+	Path string            `json:"path"   doc:"where to find the config spec file path"`
+	Env  map[string]string `json:"env"    doc:"env var setup map[name]value"`
+}
+    AutoCfg auto config format specifies the path of a configuration file to
+    load and an environment variable map
+
+type SearchMode int
+    SearchMode selects the configuration search order and merge strategy.
+    Direct search ignores autocfg files. Indirect loads an indirect path from
+    which to load a configuration.
+
+    # Direct file paths
+
+    - local: current working directory (.{{app name}}.json )
+
+    - config: home .config directory (~/.config/{{app name}})/config.json
+
+    - etc: /etc/ config directory (/etc/{{app name}})/config.json
+
+    # Auto config files
+
+    The indirect path in autocfg files are used to point to an alternate
+    configuration.
+
+    - local: current working directory (.autocfg.json )
+
+    - config: home .config directory (~/.config/{{app name}})/autocfg.json
+
+    - etc: /etc/ config directory (/etc/{{app name}})/autocfg.json
+
+    When AUTOCFG_FILENAME is specified it alters the runtime environment to
+    ignore direct modes and will attempt to load from the autocfg configuration
+    file specified
+
+    All modes evaluate environment variables but replace their values when any
+    corresponding flag is set load a file or files.
+
+    type Modes int
+
+const (
+	// Union merges all found configuration files.
+	Union SearchMode = 1 << iota
+	// First is a short circuit evalutaion, stop on first found,
+	First
+	// Direct loads files from their names when found.
+	Direct
+	// Indirect loads an autocfg file, then uses it's path attribute to
+	// find the configuration file to load.
+	Indirect
+)
+func GetMode() (m SearchMode)
+    GetMode and validate parameters for configure
+
+#+end_src

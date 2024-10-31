@@ -8,10 +8,10 @@ When DirectUnionMode is set autocfg priorizes configuration loading
 each of the files in the following list each file's values replace any
 previously found and unmarshaled files.
 
-- /etc/{{program-name}}/config.json
-- ~/.config/{{program-name}}/config.json
-- .{{program-name}}.json in the current directory
-- When set a file named in the environment variable AUTOCFG_FILENAME
+  - /etc/{{program-name}}/config.json
+  - ~/.config/{{program-name}}/config.json
+  - .{{program-name}}.json in the current directory
+  - When set a file named in the environment variable AUTOCFG_FILENAME
 
 The last file found has priority or dominates prior configurations
 loaded.
@@ -19,10 +19,10 @@ loaded.
 When DirectFirstFoundMode is set autocfg loads the first found
 configuration and stops loading when a file is found.
 
-- When set a file named in the environment variable AUTOCFG_FILENAME
-- .{{program-name}}.json in the current directory
-- ~/.config/{{program-name}}/config.json
-- /etc/{{program-name}}/config.json
+  - When set a file named in the environment variable AUTOCFG_FILENAME
+  - .{{program-name}}.json in the current directory
+  - ~/.config/{{program-name}}/config.json
+  - /etc/{{program-name}}/config.json
 
 When DirectAndIndirectMode is set then search DirectFirstFoundMode. If
 no configuration is found then search indirect autocfg files in the
@@ -45,8 +45,8 @@ supplied as the argument to the configuration call.
 
 2. env - Environment variables are static pre-runtime; but may precede
 the execution call, when an env variable is set, use that value and
-replace an existing value(s) option specified in a file loaded
-configuration in 1.
+replace any existing value(s) specified in a file configuration loaded
+in 1.
 
 3. flag - Flags are evaluated from the command line. When flags are
 specified, set corresponding object members from command line flag

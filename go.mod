@@ -3,14 +3,16 @@ module github.com/davidwalter0/go-autocfg
 go 1.21.0
 
 require (
-	github.com/davidwalter0/go-cfg v1.4.0-rc.1
+	github.com/davidwalter0/go-cfg v1.5.0
+	github.com/davidwalter0/go-tracer v0.0.1
 	github.com/hashicorp/vault/api v1.10.0
 	github.com/mitchellh/go-homedir v1.1.0
 )
 
 require (
 	github.com/cenkalti/backoff/v3 v3.0.0 // indirect
-	github.com/davidwalter0/go-flag v0.2.5 // indirect
+	github.com/davidwalter0/go-flag v0.3.0-rc.0 // indirect
+	github.com/fatih/color v1.10.0 // indirect
 	github.com/go-jose/go-jose/v3 v3.0.0 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect
@@ -23,6 +25,7 @@ require (
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/kr/text v0.2.0 // indirect
 	github.com/mattn/color v0.0.0-20151026152412-8640971291e5 // indirect
+	github.com/mattn/go-colorable v0.1.8 // indirect
 	github.com/mattn/go-isatty v0.0.12 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
 	github.com/ryanuber/go-glob v1.0.0 // indirect

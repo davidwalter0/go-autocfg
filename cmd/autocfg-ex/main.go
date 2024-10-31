@@ -25,8 +25,8 @@ var client *api.Client
 func main() {
 	// var text []byte
 	// var err error
-	//	autocfg.Generator(app)
-	autocfg.SetMode(autocfg.Direct | autocfg.First)
+	//  autocfg.Generator(app)
+	autocfg.SetMode(autocfg.Union | autocfg.Indirect)
 	fmt.Fprintf(os.Stderr, "Mode %v\n", autocfg.SearchModeName(autocfg.GetMode()))
 	if app.Debug {
 		fmt.Println(autocfg.String())
@@ -43,7 +43,7 @@ func main() {
 	fmt.Fprintf(os.Stderr, "Mode %v\n", autocfg.SearchModeName(autocfg.GetMode()))
 	autocfg.Configure(app)
 	// if text, err = json.MarshalIndent(app, "", "  "); err != nil {
-	// 	log.Fatal(err)
+	//  log.Fatal(err)
 	// }
 	if app.Debug {
 		autocfg.Dump(app)
@@ -55,7 +55,7 @@ func main() {
 	fmt.Fprintf(os.Stderr, "Mode %v\n", autocfg.SearchModeName(autocfg.GetMode()))
 	autocfg.Configure(app)
 	// if text, err = json.MarshalIndent(app, "", "  "); err != nil {
-	// 	log.Fatal(err)
+	//  log.Fatal(err)
 	// }
 	if app.Debug {
 		autocfg.Dump(app)

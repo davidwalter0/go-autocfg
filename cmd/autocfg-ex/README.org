@@ -187,21 +187,22 @@ The order of application of configuration load is strictly
 package main
 
 import (
-	"encoding/json"
-	"fmt"
-	"log"
-	"github.com/davidwalter0/go-autocfg"
+        "encoding/json"
+        "fmt"
+        "log"
+        "os"
+        "github.com/davidwalter0/go-autocfg"
 
-	"github.com/hashicorp/vault/api"
+        "github.com/hashicorp/vault/api"
 )
 
 // App config options
 type App struct {
-	VaultAddr string `json:"vault-address"`
-	Role      string `json:"role"`
-	Secret    string `json:"secret"`
-	Filename  string `json:"filename,omitempty" doc:"filename for command line flag file name override"`
-	Debug     bool   `json:"debug,omitempty"`
+        VaultAddr string `json:"vault-addr"`
+        Role      string `json:"role"`
+        Secret    string `json:"secret"`
+        Filename  string `json:"filename,omitempty" doc:"filename for command line flag file name override"`
+        Debug     bool   `json:"debug,omitempty"`
 }
 
 var app = &App{}
@@ -210,31 +211,45 @@ var text []byte
 var client *api.Client
 
 func main() {
-//	var text []byte
-	var err error
-	//	autocfg.Generator(app)
-	autocfg.Configure(app)
-	// var conf = api.DefaultConfig()
-	// client, err = api.NewClient(conf)
-	// client.SetAddress(app.VaultAddr)
-
-	// resp, err := client.Logical().Write("auth/approle/login", map[string]interface{}{
-	// 	"role_id":   app.Role,
-	// 	"secret_id": app.Secret,
-	// })
-	// if err != nil {
-	// 	log.Fatal(err)
-	// }
-	// Use resp.Auth.ClientToken for whatever you want
-
-	if text, err = json.MarshalIndent(app, "", "  "); err != nil {
-		log.Fatal(err)
-	}
+        var err error
+	autocfg.SetMode(autocfg.Direct | autocfg.First)
+	fmt.Fprintf(os.Stderr, "Mode %v\n", autocfg.SearchModeName(autocfg.GetMode()))
 	if app.Debug {
+		fmt.Println(autocfg.String())
+		fmt.Fprintf(os.Stderr, "Mode %v\n", autocfg.SearchModeName(autocfg.GetMode()))
 	}
-	fmt.Printf("%s\n", string(text))
+
+        os.Setenv("AUTOCFG_FILENAME","/tmp/autocfg.vault.tmp.config.json")
+        os.Setenv("VAULT_ADDR","https://vault.addr")
+        autocfg.Configure(app)
+        if text, err = json.MarshalIndent(app, "", "  "); err != nil {
+                log.Fatal(err)
+        }
+        if app.Debug {
+        }
+        fmt.Fprintf(os.Stderr,"%s\n", string(text))
 }
 
+#+end_src
+
+#+RESULTS:
+#+begin_src org
+Mode First-Direct
+before if mode&First == First { 
+	[/tmp/autocfg.vault.tmp.config.json .go-src-iz0bbx.json ${HOME}/.config/go-src-iz0bbx/config.json /etc/go-src-iz0bbx/config.json]
+after if mode&First == First { 
+	[/tmp/autocfg.vault.tmp.config.json .go-src-iz0bbx.json ${HOME}/.config/go-src-iz0bbx/config.json /etc/go-src-iz0bbx/config.json]
+
+after configure
+
+after cfg.Flags
+{
+  "vault-addr": "https://vault.addr",
+  "role": "tmpdir-role",
+  "secret": "tmpdir-secret",
+  "debug": true
+}
+[ Babel evaluation exited with code 0 ]
 #+end_src
 
 ** build and test
