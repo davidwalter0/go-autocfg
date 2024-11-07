@@ -712,6 +712,9 @@ func LoadIndirect(path string, obj any) (err error) {
 		text = []byte(os.ExpandEnv(string(text)))
 		err = json.Unmarshal(text, obj)
 	}
+	for k, v := range autoCfg.Env {
+		os.Setenv(k, v)
+	}
 	return
 }
 
